@@ -105,7 +105,8 @@ cat <<__EOF__ > ${OPENSHIFT_REPO_DIR}/deployments/app-knob.yml
 ---
 application:
   root: ${OPENSHIFT_REPO_DIR}
-  env: ${RACK_ENV}
+environment:
+  RACK_ENV: ${RACK_ENV}
 __EOF__
 touch ${OPENSHIFT_REPO_DIR}/deployments/app-knob.yml.dodeploy
 END_OF_BUILD
