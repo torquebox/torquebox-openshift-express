@@ -48,7 +48,7 @@ File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'w') do |file|
 # php, ruby, etc.
 
 JRUBY_VERSION="1.6.4"
-TORQUEBOX_BUILD="382"
+TORQUEBOX_BUILD="392"
 RACK_ENV="production"
 
 cd ${OPENSHIFT_APP_DIR}
