@@ -1,4 +1,6 @@
 [register]: https://openshift.redhat.com/app/user/new/express
+[forums]: https://www.redhat.com/openshift/forums/express
+[openshift-kb]: https://www.redhat.com/openshift/kb
 
 
 # TorqueBox on OpenShift Express
@@ -33,3 +35,16 @@ conversion manually, follow the steps below.
 * `touch .openshift/config/modules/.gitkeep`
 * Patch (-p1) `.openshift/config/standalone.xml` w/ `standalone.xml.patch`
 * Copy `build` to `.openshift/action_hooks/build`
+
+
+## Questions?
+
+If you're stuck the best place to ask questions is in #torquebox for
+anything TorqueBox-specific or in the [OpenShift Express
+Forums][forums] for general OpenShift inquiries.
+
+The [OpenShift Knowledge Base][openshift-kb] answers many common
+questions such as how to deploy Rails and Sinatra applications on top
+of OpenShift Express and the [OpenShift Express User
+Guide][openshift-guide] goes into great detail on the client tools
+(rhc-* commands) and their various options.
