@@ -7,21 +7,23 @@
 
 ## QuickStart
 
-* [Register][] for OpenShift Express
-* Install OpenShift client gems - `gem install rhc`
-* Create a domain name - `rhc-create-domain -n mydomain -l username`
-* Create an AS7 application - `rhc-create-app -a myapp -t jbossas-7.0`
-* Convert the newly created Java application to Ruby for use with TorqueBox
-  * `cd myapp`
-  * Download `https://raw.github.com/torquebox/torquebox-openshift-express/master/java_to_ruby.rb` to the current directory
-  * `ruby java_to_ruby.rb` to convert your application
-* Confirm changes and commit result - be sure to `git add` the new files except for java_to_ruby.rb
-  * `git add .openshift/config/modules`
-  * `git add config.ru`
-  * `git commit -am "Converted to TorqueBox"`
-* `git push` your new Ruby application
-  * During this first push Express will download the necessary TorqueBox and
-    JRuby installations then start your application
+1. [Register][] for OpenShift Express
+1. Install OpenShift client gems - `gem install rhc`
+1. Create a domain name - `rhc-create-domain -n mydomain -l username`
+1. Create an AS7 application - `rhc-create-app -a myapp -t jbossas-7.0`
+1. Convert the newly created Java application to Ruby for use with TorqueBox
+    * `cd myapp`
+    * Download `https://raw.github.com/torquebox/torquebox-openshift-express/master/java_to_ruby.rb` to the current directory
+    * `ruby java_to_ruby.rb` to convert your application
+1. Confirm changes and commit result - be sure to `git add` the new files except for java_to_ruby.rb
+    * `git add .openshift/config/modules`
+    * `git add config.ru`
+    * `git commit -am "Converted to TorqueBox"`
+1. `git push` your new Ruby application
+    * During this first push Express will download the necessary TorqueBox and
+      JRuby installations then start your application
+1. Visit your new application at http://myapp-mydomain.rhcloud.com
+1. Edit your application and `git push` to deploy new changes
 
 
 ## Manual Conversion
@@ -29,12 +31,20 @@
 If you'd prefer not to run java_to_ruby.rb and instead do the
 conversion manually, follow the steps below.
 
-* Remove Java files - `pom.xml`, `src/`, `deployments/`
-* Add Ruby bits (config.ru, Gemfile, etc)
-* `mkdir -p .openshift/config/modules`
-* `touch .openshift/config/modules/.gitkeep`
-* Patch (-p1) `.openshift/config/standalone.xml` w/ `standalone.xml.patch`
-* Copy `build` to `.openshift/action_hooks/build`
+1. Remove Java files - `pom.xml`, `src/`, `deployments/`
+1. Add Ruby bits (config.ru, Gemfile, etc)
+1. `mkdir -p .openshift/config/modules`
+1. `touch .openshift/config/modules/.gitkeep`
+1. Patch (-p1) `.openshift/config/standalone.xml` w/ `standalone.xml.patch`
+1. Copy `build` to `.openshift/action_hooks/build`
+
+## Outstanding Issues
+
+* We've had some reports that when the rhc client tools are used under
+  JRuby the password prompt behaves poorly. You can work around this
+  by passing the -p option and your password on the commandline or
+  help us fix it by submitting a pull request to
+  <https://github.com/openshift/os-client-tools>
 
 
 ## Questions?
