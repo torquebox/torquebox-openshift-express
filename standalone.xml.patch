@@ -6,27 +6,36 @@ index 62fa026..b8192b0 100644
          <extension module="org.jboss.as.transactions"/>
          <extension module="org.jboss.as.web" />
          <extension module="org.jboss.as.weld" />
-+        <extension module='org.torquebox.bootstrap'/>
-+        <extension module='org.torquebox.core'/>
-+        <extension module='org.torquebox.cdi'/>
-+        <extension module='org.torquebox.jobs'/>
-+        <extension module='org.torquebox.security'/>
-+        <extension module='org.torquebox.services'/>
-+        <extension module='org.torquebox.web'/>
++        <extension module="org.torquebox.bootstrap"/>
++        <extension module="org.torquebox.core"/>
++        <extension module="org.torquebox.cdi"/>
++        <extension module="org.torquebox.jobs"/>
++        <extension module="org.torquebox.security"/>
++        <extension module="org.torquebox.services"/>
++        <extension module="org.torquebox.web"/>
      </extensions>
  
      <profile>
+@@ -110,7 +117,7 @@
+             </datasources>
+         </subsystem>
+         <subsystem xmlns="urn:jboss:domain:deployment-scanner:1.0">
+-            <deployment-scanner scan-interval="5000" relative-to="jboss.server.base.dir" path="deployments" />
++            <deployment-scanner scan-interval="5000" relative-to="jboss.server.base.dir" path="deployments" deployment-timeout="1200"/>
+         </subsystem>
+         <subsystem xmlns="urn:jboss:domain:ee:1.0" />
+         <subsystem xmlns="urn:jboss:domain:ejb3:1.0" />
 @@ -180,6 +187,13 @@
              </virtual-server>
          </subsystem>
          <subsystem xmlns="urn:jboss:domain:weld:1.0" />
-+        <subsystem xmlns='urn:jboss:domain:torquebox-bootstrap:1.0'/>
-+        <subsystem xmlns='urn:jboss:domain:torquebox-core:1.0'/>
-+        <subsystem xmlns='urn:jboss:domain:torquebox-cdi:1.0'/>
-+        <subsystem xmlns='urn:jboss:domain:torquebox-jobs:1.0'/>
-+        <subsystem xmlns='urn:jboss:domain:torquebox-security:1.0'/>
-+        <subsystem xmlns='urn:jboss:domain:torquebox-services:1.0'/>
-+        <subsystem xmlns='urn:jboss:domain:torquebox-web:1.0'/>
++        <subsystem xmlns="urn:jboss:domain:torquebox-bootstrap:1.0"/>
++        <subsystem xmlns="urn:jboss:domain:torquebox-core:1.0"/>
++        <subsystem xmlns="urn:jboss:domain:torquebox-cdi:1.0"/>
++        <subsystem xmlns="urn:jboss:domain:torquebox-jobs:1.0"/>
++        <subsystem xmlns="urn:jboss:domain:torquebox-security:1.0"/>
++        <subsystem xmlns="urn:jboss:domain:torquebox-services:1.0"/>
++        <subsystem xmlns="urn:jboss:domain:torquebox-web:1.0"/>
      </profile>
  
      <interfaces>
