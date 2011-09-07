@@ -430,3 +430,8 @@ jrcq3gYOyVkvcjjwUWA53iD6KaGAhISEvC/xg+QaYFQiHivqXVAh7w7hLxKGhIS8XzkHeCoUj/cv
 end
 END_OF_CONFIG_RU
 end
+
+# Add java_to_ruby.rb to .gitignore
+File.open('.gitignore', 'a') do |file|
+  file.write("java_to_ruby.rb\n")
+end
