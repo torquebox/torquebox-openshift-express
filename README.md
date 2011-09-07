@@ -14,6 +14,9 @@
   * Download `https://raw.github.com/torquebox/torquebox-openshift-express/master/java_to_ruby.rb` to the current directory
   * `ruby java_to_ruby.rb` to convert your application
 * Confirm changes and commit result - be sure to `git add` the new files except for java_to_ruby.rb
+  * `git add .openshift/config/modules`
+  * `git add config.ru`
+  * `git commit -am "Converted to TorqueBox"`
 * `git push` your new Ruby application
   * During this first push Express will download the necessary TorqueBox and
     JRuby installations then start your application
