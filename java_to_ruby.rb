@@ -58,6 +58,7 @@ if [ ! -d jruby-${JRUBY_VERSION} ]; then
     curl -o jruby-bin-${JRUBY_VERSION}.tar.gz "http://jruby.org.s3.amazonaws.com/downloads/${JRUBY_VERSION}/jruby-bin-${JRUBY_VERSION}.tar.gz"
     tar -xzf jruby-bin-${JRUBY_VERSION}.tar.gz
     rm jruby-bin-${JRUBY_VERSION}.tar.gz
+    rm -rf jruby-${JRUBY_VERSION}/share/ri/1.8/system/*
     ln -sf jruby-${JRUBY_VERSION} jruby
 fi
 
