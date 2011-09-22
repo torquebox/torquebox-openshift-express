@@ -33,7 +33,7 @@ profiles.each do |profile|
   end
   scanner_subsystem = profile.get_elements("subsystem[@xmlns='urn:jboss:domain:deployment-scanner:1.0']").first
   scanner = scanner_subsystem.get_elements('deployment-scanner').first
-  scanner.add_attribute('deployment-timeout', 1200)
+  scanner.add_attribute('deployment-timeout', '1200')
 end
 File.open(File.join(root, '.openshift', 'config', 'standalone.xml'), 'w') do |file|
   doc.write(file, 4)
