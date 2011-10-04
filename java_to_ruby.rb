@@ -50,6 +50,32 @@ File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'w') do |file|
 JRUBY_VERSION="1.6.4"
 TORQUEBOX_BUILD="492"
 RACK_ENV="production"
+MAJOR_VERSION="2.x.incremental"
+GEM_SOURCE="http://torquebox.org/2x/builds/${TORQUEBOX_BUILD}/gem-repo"
+TB_VERSION="$MAJOR_VERSION.${TORQUEBOX_BUILD}"
+
+install_gems()
+{
+    processing=0
+    jruby -S gem dependency --remote torquebox --version ${TB_VERSION} --source $GEM_SOURCE | while read line
+    do
+      if [ "$line" == "Gem torquebox-${TB_VERSION}" ]; then
+        processing=1
+        echo "Installing TorqueBox gem version ${TB_VERSION}"
+        jruby -J-Xmx128m -S gem install torquebox --ignore-dependencies --version ${TB_VERSION} --source ${GEM_SOURCE}
+      elif [ $processing == 1 ]; then
+        if echo $line | grep '^Gem' > /dev/null; then
+          processing=0
+        elif [ ! "$line" == "" ]; then
+          set -- $line
+          gem_name=$1
+          gem_version=$3; gem_version=`echo ${gem_version/,/}`
+          echo "Installing ${gem_name} version ${gem_version}"
+          jruby -J-Xmx128m -S gem install ${gem_name} --ignore-dependencies --version ${gem_version} --source ${GEM_SOURCE}
+        fi
+      fi
+    done
+}
 
 cd ${OPENSHIFT_DATA_DIR}
 
@@ -97,7 +123,7 @@ fi
 
 # Install the TorqueBox gems if needed
 if ! jruby -S gem list | grep "torquebox (2.x.incremental.${TORQUEBOX_BUILD})" > /dev/null; then
-    jruby -J-Xmx192m -S gem install torquebox --pre --source http://torquebox.org/2x/builds/${TORQUEBOX_BUILD}/gem-repo/
+    install_gems
 fi
 
 # If .bundle isn't currently committed and a Gemfile is then bundle install
