@@ -48,10 +48,10 @@ File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'w') do |file|
 # php, ruby, etc.
 
 JRUBY_VERSION="1.6.4"
-TORQUEBOX_BUILD="392"
+TORQUEBOX_BUILD="492"
 RACK_ENV="production"
 
-cd ${OPENSHIFT_APP_DIR}
+cd ${OPENSHIFT_DATA_DIR}
 
 # Download a JRuby and plonk it next to our jboss.home.dir
 if [ ! -d jruby-${JRUBY_VERSION} ]; then
@@ -72,11 +72,18 @@ fi
 if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/torquebox ]; then
     # Symlink TorqueBox modules into the app's .openshift/config/modules directory
     mkdir -p ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org
-    ln -s ${OPENSHIFT_APP_DIR}/torquebox-${TORQUEBOX_BUILD}-modules/torquebox ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/torquebox
+    ln -s ${OPENSHIFT_DATA_DIR}/torquebox-${TORQUEBOX_BUILD}-modules/torquebox ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/torquebox
 fi
 
 # Add jruby to our path
-export PATH=${OPENSHIFT_APP_DIR}/jruby/bin:$PATH
+export PATH=${OPENSHIFT_DATA_DIR}/jruby/bin:$PATH
+
+# Set JRUBY_HOME if we need to
+if ! grep 'jruby.home' ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf > /dev/null; then
+    echo "JAVA_OPTS=\\"\\$JAVA_OPTS -Djruby.home=${OPENSHIFT_DATA_DIR}jruby\\"" >> ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf
+else
+    echo "jruby.home has already been set."
+fi
 
 # Install Bundler if needed
 if ! jruby -S gem list | grep bundler > /dev/null; then
@@ -90,12 +97,12 @@ fi
 
 # Install the TorqueBox gems if needed
 if ! jruby -S gem list | grep "torquebox (2.x.incremental.${TORQUEBOX_BUILD})" > /dev/null; then
-    jruby -S gem install torquebox --pre --source http://torquebox.org/2x/builds/${TORQUEBOX_BUILD}/gem-repo/
+    jruby -J-Xmx192m -S gem install torquebox --pre --source http://torquebox.org/2x/builds/${TORQUEBOX_BUILD}/gem-repo/
 fi
 
 # If .bundle isn't currently committed and a Gemfile is then bundle install
 if [ ! -d ${OPENSHIFT_REPO_DIR}/.bundle ] && [ -f ${OPENSHIFT_REPO_DIR}/Gemfile ]; then
-    jruby -J-Xmx256m -S bundle install --gemfile ${OPENSHIFT_REPO_DIR}/Gemfile
+    jruby -J-Xmx192m -S bundle install --gemfile ${OPENSHIFT_REPO_DIR}/Gemfile
 fi
 
 # Ensure a deployments directory exists
