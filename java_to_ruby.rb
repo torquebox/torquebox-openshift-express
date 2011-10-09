@@ -40,15 +40,16 @@ File.open(File.join(root, '.openshift', 'config', 'standalone.xml'), 'w') do |fi
 end
 
 # Add TorqueBox bits to .openshift/action_hooks/build
-File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'w') do |file|
-  file.write(<<-END_OF_BUILD)
+unless Dir.exist?(File.join(root, '.openshift'))
+  File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'w') do |file|
+    file.write(<<-END_OF_BUILD)
 #!/bin/bash
 # This is a simple build script, place your post-deploy but pre-start commands
 # in this script.  This script gets executed directly, so it could be python,
 # php, ruby, etc.
 
 JRUBY_VERSION="1.6.4"
-TORQUEBOX_BUILD="492"
+TORQUEBOX_BUILD="505"
 RACK_ENV="production"
 MAJOR_VERSION="2.x.incremental"
 GEM_SOURCE="http://torquebox.org/2x/builds/${TORQUEBOX_BUILD}/gem-repo"
@@ -178,9 +179,9 @@ install_gems()
     
     jruby -S gem fetch ${gem_name} --source ${GEM_SOURCE} --pre
     if [ -e ./${gem_name}-${TB_VERSION}-java.gem ]; then
-      jruby -J-Xmx192m -S gem install ./${gem_name}-${TB_VERSION}-java.gem
+      jruby -J-Xmx160m -S gem install ./${gem_name}-${TB_VERSION}-java.gem
     else
-      jruby -J-Xmx192m -S gem install ./${gem_name}-${TB_VERSION}.gem 
+      jruby -J-Xmx160m -S gem install ./${gem_name}-${TB_VERSION}.gem 
     fi
   done
 
@@ -252,12 +253,14 @@ environment:
   RACK_ENV: ${RACK_ENV}
 __EOF__
 touch ${OPENSHIFT_REPO_DIR}/deployments/app-knob.yml.dodeploy
-END_OF_BUILD
+  END_OF_BUILD
+  end
 end
 
 # Add Ruby application template
-File.open(File.join(root, 'config.ru'), 'w') do |file|
-  file.write(<<-END_OF_CONFIG_RU)
+unless File.exist?(File.join(root, 'config.ru'))
+  File.open(File.join(root, 'config.ru'), 'w') do |file|
+    file.write(<<-END_OF_CONFIG_RU)
 require 'rack/lobster'
 
 map '/health' do
@@ -575,10 +578,22 @@ jrcq3gYOyVkvcjjwUWA53iD6KaGAhISEvC/xg+QaYFQiHivqXVAh7w7hLxKGhIS8XzkHeCoUj/cv
   end
   run welcome
 end
-END_OF_CONFIG_RU
+  END_OF_CONFIG_RU
+  end
 end
 
 # Add java_to_ruby.rb to .gitignore
 File.open('.gitignore', 'a') do |file|
   file.write("java_to_ruby.rb\n")
+end
+
+setup_git = ARGV.index('--setup-git') || ARGV.index('-g')
+
+
+if ARGV[0] == '--setup-git' || ARGV[0] == '-g'
+  puts "Automatically Adding git directories.."
+  system 'git add .openshift/'
+  system 'git add config.ru'
+  puts "Committing changes to git."
+  system 'git commit -am "converted to torquebox."'
 end
