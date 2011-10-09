@@ -43,9 +43,8 @@ unless (jboss_config_done)
 end
 
 # Add TorqueBox bits to .openshift/action_hooks/build
-unless File.exist?(File.join(root, '.openshift'))
-  File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'w') do |file|
-    file.write(<<-END_OF_BUILD)
+File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'w') do |file|
+  file.write(<<-END_OF_BUILD)
 #!/bin/bash
 # This is a simple build script, place your post-deploy but pre-start commands
 # in this script.  This script gets executed directly, so it could be python,
@@ -257,7 +256,6 @@ environment:
 __EOF__
 touch ${OPENSHIFT_REPO_DIR}/deployments/app-knob.yml.dodeploy
   END_OF_BUILD
-  end
 end
 
 # Add Ruby application template
@@ -585,19 +583,45 @@ end
   end
 end
 
+def tb_ose_start_process(pname)
+  IO.popen(pname) do |output|
+    output.each { |line| puts "#{line}" }
+  end
+end
+
 # Add java_to_ruby.rb to .gitignore
 File.open('.gitignore', 'r+') do |file|
   lines = file.readlines
   file.write("java_to_ruby.rb\n") unless lines.index("java_to_ruby.rb\n")
 end
 
-setup_git = ARGV.index('--setup-git') || ARGV.index('-g')
+setup_git = ARGV.index('--no-git').nil? && ARGV.index('-ng').nil?
+setup_rails = ARGV.index('--setup-rails') || ARGV.index('-r')
 
-
-if ARGV[0] == '--setup-git' || ARGV[0] == '-g'
-  puts "Automatically Adding git directories.."
+if setup_git
+  puts "Adding git directories.."
   system 'git add .openshift/'
   system 'git add config.ru'
   puts "Committing changes to git."
   system 'git commit -am "converted to torquebox."'
+end
+
+if setup_rails
+  puts "#{ENV['TORQUEBOX_HOME']}"
+  app_name = Dir.pwd.split(/[\/\\]/).last
+  puts "Installing Rails for application #{app_name}..."
+  STDOUT.sync = true
+  tb_ose_start_process "jruby -S gem install rails"
+  Dir.chdir('..')
+  puts "The current dir is now #{Dir.pwd}"
+  tb_ose_start_process "jruby -S rails new #{app_name} -m $TORQUEBOX_HOME/share/rails/template.rb -b $TORQUEBOX_HOME/share/rails/openshift_app_builder.rb --skip-bundle"
+  puts "Done creating Rails app; now resolving bundle dependencies."
+  Dir.chdir("#{app_name}")
+  tb_ose_start_process "bundle install --without assets"
+  if setup_git
+    puts "Adding git directories and committing changes to git..."
+    tb_ose_start_process 'find . -not -name java_to_ruby.rb -not -name tmp -not -name .bundle -maxdepth 1 | xargs git add'
+    tb_ose_start_process "git commit -am \"Added rails application for app #{app_name}.\""
+    puts "Changes committed."
+  end
 end
