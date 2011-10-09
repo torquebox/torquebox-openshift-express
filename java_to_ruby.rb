@@ -23,20 +23,23 @@ modules = %w(bootstrap core cdi jobs security services web)
 standalone_xml = File.join(root, '.openshift', 'config', 'standalone.xml')
 doc = REXML::Document.new(File.read(standalone_xml))
 extensions = doc.root.get_elements('extensions').first
-modules.each do |name|
-  extensions.add_element('extension', 'module'=>"org.torquebox.#{name}")
-end
-profiles = doc.root.get_elements('//profile')
-profiles.each do |profile|
+jboss_config_done = false; extensions.each_element_with_attribute('module', "org.torquebox.bootstrap") {|e| jboss_config_done = true }
+unless (jboss_config_done)
   modules.each do |name|
-    profile.add_element('subsystem', 'xmlns'=>"urn:jboss:domain:torquebox-#{name}:1.0")
+    extensions.add_element('extension', 'module'=>"org.torquebox.#{name}")
   end
-  scanner_subsystem = profile.get_elements("subsystem[@xmlns='urn:jboss:domain:deployment-scanner:1.0']").first
-  scanner = scanner_subsystem.get_elements('deployment-scanner').first
-  scanner.add_attribute('deployment-timeout', '1200')
-end
-File.open(File.join(root, '.openshift', 'config', 'standalone.xml'), 'w') do |file|
-  doc.write(file, 4)
+  profiles = doc.root.get_elements('//profile')
+  profiles.each do |profile|
+    modules.each do |name|
+      profile.add_element('subsystem', 'xmlns'=>"urn:jboss:domain:torquebox-#{name}:1.0")
+    end
+    scanner_subsystem = profile.get_elements("subsystem[@xmlns='urn:jboss:domain:deployment-scanner:1.0']").first
+    scanner = scanner_subsystem.get_elements('deployment-scanner').first
+    scanner.add_attribute('deployment-timeout', '1200')
+  end
+  File.open(File.join(root, '.openshift', 'config', 'standalone.xml'), 'w') do |file|
+    doc.write(file, 4)
+  end
 end
 
 # Add TorqueBox bits to .openshift/action_hooks/build
@@ -48,10 +51,145 @@ File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'w') do |file|
 # php, ruby, etc.
 
 JRUBY_VERSION="1.6.4"
-TORQUEBOX_BUILD="392"
+TORQUEBOX_BUILD="505"
 RACK_ENV="production"
+MAJOR_VERSION="2.x.incremental"
+GEM_SOURCE="http://torquebox.org/2x/builds/${TORQUEBOX_BUILD}/gem-repo"
+TB_VERSION="$MAJOR_VERSION.${TORQUEBOX_BUILD}"
 
-cd ${OPENSHIFT_APP_DIR}
+declare -a current_deps=()
+declare -a final_gems=()
+
+declare -a held_gems=()
+declare -a held_deps=()
+
+find_tb_gem()
+{
+  local i; for (( i = 0; i < ${#final_gems[@]}; i++ ))
+  do
+    if [ "${final_gems[i]}" == "$1" ]; then
+      return $i
+    elif [ "${final_gems[i]}" == "$1-java" ]; then
+      return $i
+    fi
+  done
+  return 255
+}
+
+process_held_gems()
+{
+  local i; for ((i = 0; i < ${#held_gems[@]}; i++ ))
+  do
+    local deps="${held_deps[i]}"
+    deserialize_dependencies $deps
+    current_gem="${held_gems[i]}"
+    process_current_gem
+  done
+}
+
+deserialize_dependencies()
+{
+  current_deps=()
+  local deps=$1
+  OLD_IFS=$IFS
+  IFS=","
+  set -- $deps
+  while (( "$#" )); do
+    current_deps=( "${current_deps[@]}" "$1" )
+    shift
+  done
+  IFS=$OLD_IFS
+}
+
+serialize_dependencies()
+{
+  current_deps_ser=$(printf ",%s" "${current_deps[@]}")
+  current_deps_ser=${current_deps_ser:1}
+}
+
+process_current_gem()
+{
+  if [ ${#current_deps[@]} -eq 0 ]; then  
+    final_gems=( "$current_gem" "${final_gems[@]}" )
+    return
+  fi
+
+  local max_index=-1
+  local i; for (( i = 0; i < ${#current_deps[@]}; i++ ))
+  do
+    local current_dep="${current_deps[i]}"
+    find_tb_gem $current_dep
+    local dep_index=$?
+    if [ ${dep_index} -eq 255 ]; then
+      max_index=255
+      break
+    elif [ ${dep_index} -gt ${max_index} ]; then
+      max_index=$dep_index
+    fi
+  done
+
+  if [ ${max_index} -eq 255 ]; then
+    held_gems=( "${held_gems[@]}" "${current_gem}" )
+    serialize_dependencies
+    held_deps=( "${held_deps[@]}" "${current_deps_ser}" )
+  else
+    final_gems=(${final_gems[@]:0:$max_index + 1} "$current_gem" ${final_gems[@]:$(($max_index + 1))})
+  fi
+  return $max_index
+}
+
+install_gems()
+{
+    dependencies=`jruby -S gem dependency --remote torquebox --version ${TB_VERSION} --source $GEM_SOURCE`
+    OLD_IFS=$IFS
+    IFS="$(echo -e "\\n\\r")"
+    for line in $dependencies
+    do
+      if [ "$line" == "Gem torquebox-${TB_VERSION}" ]; then
+        current_gem="torquebox-${TB_VERSION}"
+      elif echo $line | grep '^Gem' > /dev/null; then
+        process_current_gem
+        IFS=$OLD_IFS
+        set -- $line
+        current_gem=$2
+        current_deps=()
+      elif [ ! "$line" == "" ]; then
+        IFS=$OLD_IFS
+        set -- $line
+        gem_name=$1
+        gem_version=$3; gem_version=`echo ${gem_version/,/}`
+        if echo $line | grep '^torquebox' > /dev/null; then
+          current_deps=( "${current_deps[@]}" "${gem_name}-${gem_version}" )
+        fi
+      fi
+    done
+    process_current_gem
+
+  process_held_gems
+
+  local i; for (( i = 0; i < ${#final_gems[@]}; i++ ))
+  do
+    local gem_string=${final_gems[i]}
+    set -- ${final_gems[i]}
+    local gem_name=`echo "${gem_string}" | sed -E "s/^(.*)-${TB_VERSION}.*$/\\\\1/"`
+
+    if [ "$gem_name" == "torquebox-server" ]; then
+      # skip torquebox-server, we don't need it.
+      continue;
+    fi
+    echo "Installing gem - ${final_gems[i]}"
+    
+    jruby -S gem fetch ${gem_name} --source ${GEM_SOURCE} --pre
+    if [ -e ./${gem_name}-${TB_VERSION}-java.gem ]; then
+      jruby -J-Xmx160m -S gem install ./${gem_name}-${TB_VERSION}-java.gem
+    else
+      jruby -J-Xmx160m -S gem install ./${gem_name}-${TB_VERSION}.gem 
+    fi
+  done
+
+}
+
+cd ${OPENSHIFT_DATA_DIR}
 
 # Download a JRuby and plonk it next to our jboss.home.dir
 if [ ! -d jruby-${JRUBY_VERSION} ]; then
@@ -72,11 +210,18 @@ fi
 if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/torquebox ]; then
     # Symlink TorqueBox modules into the app's .openshift/config/modules directory
     mkdir -p ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org
-    ln -s ${OPENSHIFT_APP_DIR}/torquebox-${TORQUEBOX_BUILD}-modules/torquebox ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/torquebox
+    ln -s ${OPENSHIFT_DATA_DIR}/torquebox-${TORQUEBOX_BUILD}-modules/torquebox ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/torquebox
 fi
 
 # Add jruby to our path
-export PATH=${OPENSHIFT_APP_DIR}/jruby/bin:$PATH
+export PATH=${OPENSHIFT_DATA_DIR}/jruby/bin:$PATH
+
+# Set JRUBY_HOME if we need to
+if ! grep 'jruby.home' ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf > /dev/null; then
+    echo "JAVA_OPTS=\\"\\$JAVA_OPTS -Djruby.home=${OPENSHIFT_DATA_DIR}jruby\\"" >> ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf
+else
+    echo "jruby.home has already been set."
+fi
 
 # Install Bundler if needed
 if ! jruby -S gem list | grep bundler > /dev/null; then
@@ -90,12 +235,12 @@ fi
 
 # Install the TorqueBox gems if needed
 if ! jruby -S gem list | grep "torquebox (2.x.incremental.${TORQUEBOX_BUILD})" > /dev/null; then
-    jruby -S gem install torquebox --pre --source http://torquebox.org/2x/builds/${TORQUEBOX_BUILD}/gem-repo/
+    install_gems
 fi
 
 # If .bundle isn't currently committed and a Gemfile is then bundle install
 if [ ! -d ${OPENSHIFT_REPO_DIR}/.bundle ] && [ -f ${OPENSHIFT_REPO_DIR}/Gemfile ]; then
-    jruby -J-Xmx256m -S bundle install --gemfile ${OPENSHIFT_REPO_DIR}/Gemfile
+    jruby -J-Xmx192m -S bundle install --gemfile ${OPENSHIFT_REPO_DIR}/Gemfile
 fi
 
 # Ensure a deployments directory exists
@@ -110,12 +255,13 @@ environment:
   RACK_ENV: ${RACK_ENV}
 __EOF__
 touch ${OPENSHIFT_REPO_DIR}/deployments/app-knob.yml.dodeploy
-END_OF_BUILD
+  END_OF_BUILD
 end
 
 # Add Ruby application template
-File.open(File.join(root, 'config.ru'), 'w') do |file|
-  file.write(<<-END_OF_CONFIG_RU)
+unless File.exist?(File.join(root, 'config.ru'))
+  File.open(File.join(root, 'config.ru'), 'w') do |file|
+    file.write(<<-END_OF_CONFIG_RU)
 require 'rack/lobster'
 
 map '/health' do
@@ -433,10 +579,49 @@ jrcq3gYOyVkvcjjwUWA53iD6KaGAhISEvC/xg+QaYFQiHivqXVAh7w7hLxKGhIS8XzkHeCoUj/cv
   end
   run welcome
 end
-END_OF_CONFIG_RU
+  END_OF_CONFIG_RU
+  end
+end
+
+def tb_ose_start_process(pname)
+  IO.popen(pname) do |output|
+    output.each { |line| puts "#{line}" }
+  end
 end
 
 # Add java_to_ruby.rb to .gitignore
-File.open('.gitignore', 'a') do |file|
-  file.write("java_to_ruby.rb\n")
+File.open('.gitignore', 'r+') do |file|
+  lines = file.readlines
+  file.write("java_to_ruby.rb\n") unless lines.index("java_to_ruby.rb\n")
+end
+
+setup_git = ARGV.index('--no-git').nil? && ARGV.index('-ng').nil?
+setup_rails = ARGV.index('--setup-rails') || ARGV.index('-r')
+
+if setup_git
+  puts "Adding git directories.."
+  system 'git add .openshift/'
+  system 'git add config.ru'
+  puts "Committing changes to git."
+  system 'git commit -am "converted to torquebox."'
+end
+
+if setup_rails
+  puts "#{ENV['TORQUEBOX_HOME']}"
+  app_name = Dir.pwd.split(/[\/\\]/).last
+  puts "Installing Rails for application #{app_name}..."
+  STDOUT.sync = true
+  tb_ose_start_process "jruby -S gem install rails"
+  Dir.chdir('..')
+  puts "The current dir is now #{Dir.pwd}"
+  tb_ose_start_process "jruby -S rails new #{app_name} -m $TORQUEBOX_HOME/share/rails/template.rb -b $TORQUEBOX_HOME/share/rails/openshift_app_builder.rb --skip-bundle"
+  puts "Done creating Rails app; now resolving bundle dependencies."
+  Dir.chdir("#{app_name}")
+  tb_ose_start_process "bundle install --without assets"
+  if setup_git
+    puts "Adding git directories and committing changes to git..."
+    tb_ose_start_process 'find . -not -name java_to_ruby.rb -not -name tmp -not -name .bundle -maxdepth 1 | xargs git add'
+    tb_ose_start_process "git commit -am \"Added rails application for app #{app_name}.\""
+    puts "Changes committed."
+  end
 end
