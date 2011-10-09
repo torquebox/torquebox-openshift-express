@@ -23,24 +23,27 @@ modules = %w(bootstrap core cdi jobs security services web)
 standalone_xml = File.join(root, '.openshift', 'config', 'standalone.xml')
 doc = REXML::Document.new(File.read(standalone_xml))
 extensions = doc.root.get_elements('extensions').first
-modules.each do |name|
-  extensions.add_element('extension', 'module'=>"org.torquebox.#{name}")
-end
-profiles = doc.root.get_elements('//profile')
-profiles.each do |profile|
+jboss_config_done = false; extensions.each_element_with_attribute('module', "org.torquebox.bootstrap") {|e| jboss_config_done = true }
+unless (jboss_config_done)
   modules.each do |name|
-    profile.add_element('subsystem', 'xmlns'=>"urn:jboss:domain:torquebox-#{name}:1.0")
+    extensions.add_element('extension', 'module'=>"org.torquebox.#{name}")
   end
-  scanner_subsystem = profile.get_elements("subsystem[@xmlns='urn:jboss:domain:deployment-scanner:1.0']").first
-  scanner = scanner_subsystem.get_elements('deployment-scanner').first
-  scanner.add_attribute('deployment-timeout', '1200')
-end
-File.open(File.join(root, '.openshift', 'config', 'standalone.xml'), 'w') do |file|
-  doc.write(file, 4)
+  profiles = doc.root.get_elements('//profile')
+  profiles.each do |profile|
+    modules.each do |name|
+      profile.add_element('subsystem', 'xmlns'=>"urn:jboss:domain:torquebox-#{name}:1.0")
+    end
+    scanner_subsystem = profile.get_elements("subsystem[@xmlns='urn:jboss:domain:deployment-scanner:1.0']").first
+    scanner = scanner_subsystem.get_elements('deployment-scanner').first
+    scanner.add_attribute('deployment-timeout', '1200')
+  end
+  File.open(File.join(root, '.openshift', 'config', 'standalone.xml'), 'w') do |file|
+    doc.write(file, 4)
+  end
 end
 
 # Add TorqueBox bits to .openshift/action_hooks/build
-unless Dir.exist?(File.join(root, '.openshift'))
+unless File.exist?(File.join(root, '.openshift'))
   File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'w') do |file|
     file.write(<<-END_OF_BUILD)
 #!/bin/bash
@@ -583,8 +586,9 @@ end
 end
 
 # Add java_to_ruby.rb to .gitignore
-File.open('.gitignore', 'a') do |file|
-  file.write("java_to_ruby.rb\n")
+File.open('.gitignore', 'r+') do |file|
+  lines = file.readlines
+  file.write("java_to_ruby.rb\n") unless lines.index("java_to_ruby.rb\n")
 end
 
 setup_git = ARGV.index('--setup-git') || ARGV.index('-g')
