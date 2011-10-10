@@ -51,7 +51,7 @@ File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'w') do |file|
 # php, ruby, etc.
 
 JRUBY_VERSION="1.6.4"
-TORQUEBOX_BUILD="505"
+TORQUEBOX_BUILD="508"
 RACK_ENV="production"
 MAJOR_VERSION="2.x.incremental"
 GEM_SOURCE="http://torquebox.org/2x/builds/${TORQUEBOX_BUILD}/gem-repo"
