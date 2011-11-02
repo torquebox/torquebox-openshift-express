@@ -3,11 +3,11 @@
 # in this script.  This script gets executed directly, so it could be python,
 # php, ruby, etc.
 
-JRUBY_VERSION="1.6.4"
-TORQUEBOX_BUILD="392"
+JRUBY_VERSION="1.6.5"
+TORQUEBOX_BUILD="594"
 RACK_ENV="production"
 
-cd ${OPENSHIFT_APP_DIR}
+cd ${OPENSHIFT_DATA_DIR}
 
 # Download a JRuby and plonk it next to our jboss.home.dir
 if [ ! -d jruby-${JRUBY_VERSION} ]; then
@@ -20,7 +20,7 @@ fi
 
 # Download a TorqueBox distribution and extract the modules
 if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/torquebox ] && [ ! -d torquebox-${TORQUEBOX_BUILD}-modules ]; then
-    curl -o torquebox-dist-modules.zip "http://repository-torquebox.forge.cloudbees.com/incremental/${TORQUEBOX_BUILD}/torquebox-dist-modules.zip"
+    curl -o torquebox-dist-modules.zip "http://repository-torquebox.forge.cloudbees.com/incremental/torquebox/${TORQUEBOX_BUILD}/torquebox-dist-modules.zip"
     unzip -d torquebox-${TORQUEBOX_BUILD}-modules torquebox-dist-modules.zip
     rm torquebox-dist-modules.zip
 fi
@@ -28,11 +28,21 @@ fi
 if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/torquebox ]; then
     # Symlink TorqueBox modules into the app's .openshift/config/modules directory
     mkdir -p ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org
-    ln -s ${OPENSHIFT_APP_DIR}/torquebox-${TORQUEBOX_BUILD}-modules/torquebox ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/torquebox
+    ln -s ${OPENSHIFT_DATA_DIR}/torquebox-${TORQUEBOX_BUILD}-modules/torquebox ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/torquebox
 fi
 
 # Add jruby to our path
-export PATH=${OPENSHIFT_APP_DIR}/jruby/bin:$PATH
+export PATH=${OPENSHIFT_DATA_DIR}/jruby/bin:$PATH
+
+# Set JRUBY_HOME if we need to
+if ! grep 'jruby.home' ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf > /dev/null; then
+    # Copy the symlinked file to a new file
+    mv ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf.original
+    cp ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf.original ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf
+    echo "JAVA_OPTS=\"\$JAVA_OPTS -Djruby.home=${OPENSHIFT_DATA_DIR}jruby\"" >> ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf
+else
+    echo "jruby.home has already been set."
+fi
 
 # Install Bundler if needed
 if ! jruby -S gem list | grep bundler > /dev/null; then
