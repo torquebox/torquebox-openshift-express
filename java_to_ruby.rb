@@ -50,8 +50,8 @@ File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'w') do |file|
 # in this script.  This script gets executed directly, so it could be python,
 # php, ruby, etc.
 
-JRUBY_VERSION="1.6.4"
-TORQUEBOX_BUILD="508"
+JRUBY_VERSION="1.6.5"
+TORQUEBOX_BUILD="594"
 RACK_ENV="production"
 MAJOR_VERSION="2.x.incremental"
 GEM_SOURCE="http://torquebox.org/2x/builds/${TORQUEBOX_BUILD}/gem-repo"
@@ -202,7 +202,7 @@ fi
 
 # Download a TorqueBox distribution and extract the modules
 if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/torquebox ] && [ ! -d torquebox-${TORQUEBOX_BUILD}-modules ]; then
-    curl -o torquebox-dist-modules.zip "http://repository-torquebox.forge.cloudbees.com/incremental/${TORQUEBOX_BUILD}/torquebox-dist-modules.zip"
+    curl -o torquebox-dist-modules.zip "http://repository-torquebox.forge.cloudbees.com/incremental/torquebox/${TORQUEBOX_BUILD}/torquebox-dist-modules.zip"
     unzip -d torquebox-${TORQUEBOX_BUILD}-modules torquebox-dist-modules.zip
     rm torquebox-dist-modules.zip
 fi
