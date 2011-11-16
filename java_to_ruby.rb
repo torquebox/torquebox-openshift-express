@@ -43,7 +43,7 @@ unless (jboss_config_done)
 end
 
 # Add TorqueBox bits to .openshift/action_hooks/build
-File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'w') do |file|
+File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'wb') do |file|
   file.write(<<-END_OF_BUILD)
 #!/bin/bash
 # This is a simple build script, place your post-deploy but pre-start commands
@@ -86,7 +86,7 @@ if ! grep 'jruby.home' ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.
     # Copy the symlinked file to a new file
     mv ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf.original
     cp ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf.original ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf
-    echo "JAVA_OPTS=\\"\\$JAVA_OPTS -Djruby.home=${OPENSHIFT_DATA_DIR}jruby\\"" >> ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf
+    echo -e "\\nJAVA_OPTS=\\"\\$JAVA_OPTS -Djruby.home=${OPENSHIFT_DATA_DIR}jruby\\"" >> ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf
 else
     echo "jruby.home has already been set."
 fi
