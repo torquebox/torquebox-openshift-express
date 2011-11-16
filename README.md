@@ -1,6 +1,7 @@
 [register]: https://openshift.redhat.com/app/user/new/express
 [forums]: https://www.redhat.com/openshift/forums/express
 [openshift-kb]: https://www.redhat.com/openshift/kb
+[controlpanel]: https://openshift.redhat.com/app/dashboard
 
 
 # TorqueBox on OpenShift Express
@@ -37,6 +38,17 @@ conversion manually, follow the steps below.
 1. `touch .openshift/config/modules/.gitkeep`
 1. Patch (-p1) `.openshift/config/standalone.xml` w/ `standalone.xml.patch`
 1. Copy `build` to `.openshift/action_hooks/build`
+
+
+## Hint for Microsoft Windows users
+
+If rhc-create-app on Windows fails with the message "Error in git clone", you have two options:
+
+1. Run hc-create-app with --nogit to skip the automatic cloning of the new application repo.
+1. Or visit the openshift express [Control Panel][controlpanel] and use the "Create an app..." form.
+
+After that you can find the git url in the [Control Panel][controlpanel] und clone it with your favorite git gui tool.
+
 
 ## Outstanding Issues
 
