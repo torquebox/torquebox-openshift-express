@@ -16,8 +16,9 @@
     * `cd myapp`
     * Download `https://raw.github.com/torquebox/torquebox-openshift-express/master/java_to_ruby.rb` to the current directory
     * `ruby java_to_ruby.rb` to convert your application
-1. Confirm changes and commit result - be sure to `git add` the new files except for java_to_ruby.rb
-    * `git add .openshift/config/modules`
+1. java_to_ruby.rb automatically adds the changed files to your git repo
+   and commits the result. If for some reason that failed, you can do the same with:
+    * `git add .openshift`
     * `git add config.ru`
     * `git commit -am "Converted to TorqueBox"`
 1. `git push` your new Ruby application
@@ -25,19 +26,6 @@
       JRuby installations then start your application
 1. Visit your new application at http://myapp-mydomain.rhcloud.com
 1. Edit your application and `git push` to deploy new changes
-
-
-## Manual Conversion
-
-If you'd prefer not to run java_to_ruby.rb and instead do the
-conversion manually, follow the steps below.
-
-1. Remove Java files - `pom.xml`, `src/`, `deployments/`
-1. Add Ruby bits (config.ru, Gemfile, etc)
-1. `mkdir -p .openshift/config/modules`
-1. `touch .openshift/config/modules/.gitkeep`
-1. Patch (-p1) `.openshift/config/standalone.xml` w/ `standalone.xml.patch`
-1. Copy `build` to `.openshift/action_hooks/build`
 
 
 ## Hint for Microsoft Windows users
