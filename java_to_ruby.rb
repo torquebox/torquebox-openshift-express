@@ -33,7 +33,7 @@ unless (jboss_config_done)
     modules.each do |name|
       profile.add_element('subsystem', 'xmlns'=>"urn:jboss:domain:torquebox-#{name}:1.0")
     end
-    scanner_subsystem = profile.get_elements("subsystem[@xmlns='urn:jboss:domain:deployment-scanner:1.0']").first
+    scanner_subsystem = profile.get_elements("subsystem[@xmlns='urn:jboss:domain:deployment-scanner:1.1']").first
     scanner = scanner_subsystem.get_elements('deployment-scanner').first
     scanner.add_attribute('deployment-timeout', '1200')
   end
@@ -50,15 +50,15 @@ File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'wb') do |file
 # in this script.  This script gets executed directly, so it could be python,
 # php, ruby, etc.
 
-JRUBY_VERSION="1.6.5"
-TORQUEBOX_BUILD="614"
+JRUBY_VERSION="1.6.7"
+TORQUEBOX_VERSION="2.0.0.cr1"
 RACK_ENV="production"
 
 cd ${OPENSHIFT_DATA_DIR}
 
 # Download a JRuby and plonk it next to our jboss.home.dir
 if [ ! -d jruby-${JRUBY_VERSION} ]; then
-    curl -o jruby-bin-${JRUBY_VERSION}.tar.gz "http://jruby.org.s3.amazonaws.com/downloads/${JRUBY_VERSION}/jruby-bin-${JRUBY_VERSION}.tar.gz"
+    curl -Lo jruby-bin-${JRUBY_VERSION}.tar.gz "http://jruby.org.s3.amazonaws.com/downloads/${JRUBY_VERSION}/jruby-bin-${JRUBY_VERSION}.tar.gz"
     tar -xzf jruby-bin-${JRUBY_VERSION}.tar.gz
     rm jruby-bin-${JRUBY_VERSION}.tar.gz
     rm -rf jruby-${JRUBY_VERSION}/share/ri/1.8/system/*
@@ -66,16 +66,16 @@ if [ ! -d jruby-${JRUBY_VERSION} ]; then
 fi
 
 # Download a TorqueBox distribution and extract the modules
-if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/torquebox ] && [ ! -d torquebox-${TORQUEBOX_BUILD}-modules ]; then
-    curl -o torquebox-dist-modules.zip "http://repository-torquebox.forge.cloudbees.com/incremental/torquebox/${TORQUEBOX_BUILD}/torquebox-dist-modules.zip"
-    unzip -d torquebox-${TORQUEBOX_BUILD}-modules torquebox-dist-modules.zip
+if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/torquebox ] && [ ! -d torquebox-${TORQUEBOX_VERSION}-modules ]; then
+    curl -Lo torquebox-dist-modules.zip "http://torquebox.org/release/org/torquebox/torquebox-dist/${TORQUEBOX_VERSION}/torquebox-dist-${TORQUEBOX_VERSION}-modules.zip"
+    unzip -d torquebox-${TORQUEBOX_VERSION}-modules torquebox-dist-modules.zip
     rm torquebox-dist-modules.zip
 fi
 
 if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/torquebox ]; then
     # Symlink TorqueBox modules into the app's .openshift/config/modules directory
     mkdir -p ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org
-    ln -s ${OPENSHIFT_DATA_DIR}/torquebox-${TORQUEBOX_BUILD}-modules/torquebox ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/torquebox
+    ln -s ${OPENSHIFT_DATA_DIR}/torquebox-${TORQUEBOX_VERSION}-modules/modules/org/torquebox ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/torquebox
 fi
 
 # Add jruby to our path
@@ -102,8 +102,8 @@ if ! jruby -S gem list | grep rack > /dev/null; then
 fi
 
 # Install the TorqueBox gems if needed
-if ! jruby -S gem list | grep "torquebox (2.x.incremental.${TORQUEBOX_BUILD})" > /dev/null; then
-    jruby -S gem install torquebox --pre --source http://torquebox.org/2x/builds/${TORQUEBOX_BUILD}/gem-repo/
+if ! jruby -S gem list | grep "torquebox (${TORQUEBOX_VERSION})" > /dev/null; then
+    jruby -S gem install torquebox -v ${TORQUEBOX_VERSION}
 fi
 
 # If .bundle isn't currently committed and a Gemfile is then bundle install
@@ -471,7 +471,7 @@ if setup_git
   system 'git add .openshift/'
   system 'git add config.ru'
   puts "Committing changes to git."
-  system 'git commit -am "converted to torquebox."'
+  system 'git commit -am "Converted to TorqueBox."'
 end
 
 if setup_rails
