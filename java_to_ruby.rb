@@ -161,6 +161,11 @@ if ! jruby -S gem list | grep bundler > /dev/null; then
     jruby -S gem install bundler
 fi
 
+# Install jruby-openssl if needed
+if ! jruby -S gem list | grep jruby-openssl > /dev/null; then
+  jruby -S gem install jruby-openssl
+fi
+
 # Install Rack if needed
 if ! jruby -S gem list | grep rack > /dev/null; then
     jruby -S gem install rack
