@@ -7,6 +7,54 @@
 require 'fileutils'
 require 'rexml/document'
 
+def add_messaging_subsystem(profile)
+  messaging_subsystem = profile.add_element('subsystem', 'xmlns' => 'urn:jboss:domain:messaging:1.1')
+  hornetq_server = messaging_subsystem.add_element('hornetq-server')
+  hornetq_server.add_element('persistence-enabled').add_text('true')
+  hornetq_server.add_element('journal-file-size').add_text('102400')
+  hornetq_server.add_element('journal-min-files').add_text('2')
+  hornetq_server.add_element('connectors').add_element('in-vm-connector',
+                                                       'name' => 'in-vm', 'server-id' => '0')
+  hornetq_server.add_element('acceptors').add_element('in-vm-acceptor',
+                                                      'name' => 'in-vm', 'server-id' => '0')
+  address_settings = hornetq_server.add_element('address-settings')
+  address_setting = address_settings.add_element('address-setting', 'match' => '#')
+  address_setting.add_element('dead-letter-address').add_text('jms.queue.DLQ')
+  address_setting.add_element('expiry-address').add_text('jms.queue.ExpiryQueue')
+  address_setting.add_element('redelivery-delay').add_text('0')
+  address_setting.add_element('max-size-bytes').add_text('20971520')
+  address_setting.add_element('address-full-policy').add_text('PAGE')
+  address_setting.add_element('message-counter-history-day-limit').add_text('10')
+  connection_factories = hornetq_server.add_element('jms-connection-factories')
+  in_vm_factory = connection_factories.add_element('connection-factory', 'name' => 'InVmConnectionFactory')
+  in_vm_factory.add_element('connectors').add_element('connector-ref', 'connector-name' => 'in-vm')
+  in_vm_factory.add_element('entries').add_element('entry', 'name' => 'java:/ConnectionFactory')
+  remote_factory = connection_factories.add_element('connection-factory', 'name' => 'RemoteConnectionFactory')
+  remote_factory.add_element('connectors').add_element('connector-ref', 'connector-name' => 'in-vm')
+  remote_factory.add_element('entries').add_element('entry', 'name' => 'RemoteConnectionFactory')
+  hornetq_ra_factory = connection_factories.add_element('pooled-connection-factory', 'name' => 'hornetq-ra')
+  hornetq_ra_factory.add_element('transaction', 'mode' => 'xa')
+  hornetq_ra_factory.add_element('connectors').add_element('connector-ref', 'connector-name' => 'in-vm')
+  hornetq_ra_factory.add_element('entries').add_element('entry', 'name' => 'java:/JmsXA')
+  hornetq_server.add_element('jms-destinations')
+  hornetq_server.add_element('security-enabled').add_text('false')
+end
+
+def increase_deployment_timeout(profile)
+  scanner_subsystem = profile.get_elements("subsystem[@xmlns='urn:jboss:domain:deployment-scanner:1.1']").first
+  scanner = scanner_subsystem.get_elements('deployment-scanner').first
+  scanner.add_attribute('deployment-timeout', '1200')
+end
+
+def add_torquebox_cache(profile)
+  infinispan_subsystem = profile.get_elements("subsystem[@xmlns='urn:jboss:domain:infinispan:1.1']").first
+  cache_container = infinispan_subsystem.add_element('cache-container',
+                                                     'name' => 'torquebox', 'default-cache' => 'sessions')
+  local_cache = cache_container.add_element('local-cache', 'name' => 'sessions')
+  local_cache.add_element('eviction', 'strategy' => 'LRU', 'max-entries' => '10000')
+  local_cache.add_element('expiration', 'max-idle' => '100000')
+end
+
 root = File.expand_path(File.dirname(__FILE__))
 
 # Remove Java files
@@ -19,23 +67,26 @@ FileUtils.mkdir_p(File.join(root, '.openshift', 'config', 'modules'))
 FileUtils.touch(File.join(root, '.openshift', 'config', 'modules', '.gitkeep'))
 
 # Add TorqueBox bits to standalone.xml
-modules = %w(bootstrap core cdi jobs security services web)
+modules = %w(bootstrap cache core cdi jobs messaging security services web)
 standalone_xml = File.join(root, '.openshift', 'config', 'standalone.xml')
 doc = REXML::Document.new(File.read(standalone_xml))
 extensions = doc.root.get_elements('extensions').first
 jboss_config_done = false; extensions.each_element_with_attribute('module', "org.torquebox.bootstrap") {|e| jboss_config_done = true }
 unless (jboss_config_done)
+  extensions.add_element('extension', 'module' => 'org.jboss.as.messaging')
   modules.each do |name|
-    extensions.add_element('extension', 'module'=>"org.torquebox.#{name}")
+    extensions.add_element('extension', 'module' => "org.torquebox.#{name}")
   end
+  extensions.add_element('extension', 'module' => 'org.projectodd.polyglot.hasingleton')
   profiles = doc.root.get_elements('//profile')
   profiles.each do |profile|
     modules.each do |name|
-      profile.add_element('subsystem', 'xmlns'=>"urn:jboss:domain:torquebox-#{name}:1.0")
+      profile.add_element('subsystem', 'xmlns' => "urn:jboss:domain:torquebox-#{name}:1.0")
     end
-    scanner_subsystem = profile.get_elements("subsystem[@xmlns='urn:jboss:domain:deployment-scanner:1.1']").first
-    scanner = scanner_subsystem.get_elements('deployment-scanner').first
-    scanner.add_attribute('deployment-timeout', '1200')
+    profile.add_element('subsystem', 'xmlns' => 'urn:jboss:domain:polyglot-hasingleton:1.0')
+    add_messaging_subsystem(profile)
+    increase_deployment_timeout(profile)
+    add_torquebox_cache(profile)
   end
   File.open(File.join(root, '.openshift', 'config', 'standalone.xml'), 'w') do |file|
     doc.write(file, 4)
@@ -51,6 +102,7 @@ File.open(File.join(root, '.openshift', 'action_hooks', 'build'), 'wb') do |file
 # php, ruby, etc.
 
 JRUBY_VERSION="1.6.7"
+POLYGLOT_VERSION="1.5.0"
 TORQUEBOX_VERSION="2.0.0.cr1"
 RACK_ENV="production"
 
@@ -76,6 +128,19 @@ if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/torquebox ]; the
     # Symlink TorqueBox modules into the app's .openshift/config/modules directory
     mkdir -p ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org
     ln -s ${OPENSHIFT_DATA_DIR}/torquebox-${TORQUEBOX_VERSION}-modules/modules/org/torquebox ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/torquebox
+fi
+
+# Download a Polyglot HASingleton module and extract
+if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/projectodd/polyglot/hasingleton ] && [ ! -d polyglot-hasingleton-${POLYGLOT_VERSION}-module ]; then
+    curl -Lo polyglot-hasingleton-module.zip "http://torquebox.org/release/org/projectodd/polyglot-hasingleton/${POLYGLOT_VERSION}/polyglot-hasingleton-${POLYGLOT_VERSION}-module.zip"
+    unzip -d polyglot-hasingleton-${POLYGLOT_VERSION}-module polyglot-hasingleton-module.zip
+    rm polyglot-hasingleton-module.zip
+fi
+
+if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/projectodd/polyglot/hasingleton ]; then
+    # Symlink Polyglot HASingleton module into the app's .openshift/config/modules directory
+    mkdir -p ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/projectodd/polyglot/hasingleton
+    ln -s ${OPENSHIFT_DATA_DIR}/polyglot-hasingleton-${POLYGLOT_VERSION}-module ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/projectodd/polyglot/hasingleton/main
 fi
 
 # Add jruby to our path
