@@ -118,26 +118,26 @@ if [ ! -d jruby-${JRUBY_VERSION} ]; then
 fi
 
 # Download a TorqueBox distribution and extract the modules
-if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/torquebox ] && [ ! -d torquebox-${TORQUEBOX_VERSION}-modules ]; then
+if [ ! -d ${OPENSHIFT_GEAR_DIR}${OPENSHIFT_GEAR_TYPE}/modules/org/torquebox ] && [ ! -d torquebox-${TORQUEBOX_VERSION}-modules ]; then
     curl -Lo torquebox-dist-modules.zip "http://torquebox.org/release/org/torquebox/torquebox-dist/${TORQUEBOX_VERSION}/torquebox-dist-${TORQUEBOX_VERSION}-modules.zip"
     unzip -d torquebox-${TORQUEBOX_VERSION}-modules torquebox-dist-modules.zip
     rm torquebox-dist-modules.zip
 fi
 
-if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/torquebox ]; then
+if [ ! -d ${OPENSHIFT_GEAR_DIR}${OPENSHIFT_GEAR_TYPE}/modules/org/torquebox ]; then
     # Symlink TorqueBox modules into the app's .openshift/config/modules directory
     mkdir -p ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org
     ln -s ${OPENSHIFT_DATA_DIR}/torquebox-${TORQUEBOX_VERSION}-modules/modules/org/torquebox ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/torquebox
 fi
 
 # Download a Polyglot HASingleton module and extract
-if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/projectodd/polyglot/hasingleton ] && [ ! -d polyglot-hasingleton-${POLYGLOT_VERSION}-module ]; then
+if [ ! -d ${OPENSHIFT_GEAR_DIR}${OPENSHIFT_GEAR_TYPE}/modules/org/projectodd/polyglot/hasingleton ] && [ ! -d polyglot-hasingleton-${POLYGLOT_VERSION}-module ]; then
     curl -Lo polyglot-hasingleton-module.zip "http://torquebox.org/release/org/projectodd/polyglot-hasingleton/${POLYGLOT_VERSION}/polyglot-hasingleton-${POLYGLOT_VERSION}-module.zip"
     unzip -d polyglot-hasingleton-${POLYGLOT_VERSION}-module polyglot-hasingleton-module.zip
     rm polyglot-hasingleton-module.zip
 fi
 
-if [ ! -d ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/modules/org/projectodd/polyglot/hasingleton ]; then
+if [ ! -d ${OPENSHIFT_GEAR_DIR}${OPENSHIFT_GEAR_TYPE}/modules/org/projectodd/polyglot/hasingleton ]; then
     # Symlink Polyglot HASingleton module into the app's .openshift/config/modules directory
     mkdir -p ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/projectodd/polyglot/hasingleton
     ln -s ${OPENSHIFT_DATA_DIR}/polyglot-hasingleton-${POLYGLOT_VERSION}-module ${OPENSHIFT_REPO_DIR}/.openshift/config/modules/org/projectodd/polyglot/hasingleton/main
@@ -147,11 +147,11 @@ fi
 export PATH=${OPENSHIFT_DATA_DIR}/jruby/bin:$PATH
 
 # Set JRUBY_HOME if we need to
-if ! grep 'jruby.home' ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf > /dev/null; then
+if ! grep 'jruby.home' ${OPENSHIFT_GEAR_DIR}${OPENSHIFT_GEAR_TYPE}/bin/standalone.conf > /dev/null; then
     # Copy the symlinked file to a new file
-    mv ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf.original
-    cp ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf.original ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf
-    echo -e "\\nJAVA_OPTS=\\"\\$JAVA_OPTS -Djruby.home=${OPENSHIFT_DATA_DIR}jruby\\"" >> ${OPENSHIFT_APP_DIR}${OPENSHIFT_APP_TYPE}/bin/standalone.conf
+    mv ${OPENSHIFT_GEAR_DIR}${OPENSHIFT_GEAR_TYPE}/bin/standalone.conf ${OPENSHIFT_GEAR_DIR}${OPENSHIFT_GEAR_TYPE}/bin/standalone.conf.original
+    cp ${OPENSHIFT_GEAR_DIR}${OPENSHIFT_GEAR_TYPE}/bin/standalone.conf.original ${OPENSHIFT_GEAR_DIR}${OPENSHIFT_GEAR_TYPE}/bin/standalone.conf
+    echo -e "\\nJAVA_OPTS=\\"\\$JAVA_OPTS -Djruby.home=${OPENSHIFT_DATA_DIR}jruby\\"" >> ${OPENSHIFT_GEAR_DIR}${OPENSHIFT_GEAR_TYPE}/bin/standalone.conf
 else
     echo "jruby.home has already been set."
 fi
