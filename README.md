@@ -11,7 +11,7 @@
 1. [Register][] for OpenShift Express
 1. Install OpenShift client gems - `gem install rhc`
 1. Create a domain name - `rhc-create-domain -n mydomain -l username`
-1. Create an AS7 application - `rhc-create-app -a myapp -t jbossas-7.0`
+1. Create an AS7 application - `rhc-create-app -a myapp -t jbossas-7`
 1. Convert the newly created Java application to Ruby for use with TorqueBox
     * `cd myapp`
     * Download `https://raw.github.com/torquebox/torquebox-openshift-express/master/java_to_ruby.rb` to the current directory
