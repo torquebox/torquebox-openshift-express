@@ -2,6 +2,11 @@
 [forums]: https://www.redhat.com/openshift/forums/express
 [openshift-kb]: https://www.redhat.com/openshift/kb
 [controlpanel]: https://openshift.redhat.com/app/dashboard
+[quickstart]: https://github.com/torquebox/openshift-quickstart
+
+## No Longer Maintained
+
+Please use the [openshift-quickstart][quickstart] project for running TorqueBox on OpenShift.
 
 
 # TorqueBox on OpenShift Express
